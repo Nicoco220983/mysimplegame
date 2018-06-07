@@ -1,0 +1,14 @@
+{
+  "name": "mysimplegame",
+  "version": "0.1.0",
+  "description": "MySimpleGame core libs",
+  "main": "mysimplegame-core.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Nicolas CARREZ",
+  "license": "MIT"
+}
