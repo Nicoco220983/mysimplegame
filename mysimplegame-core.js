@@ -236,6 +236,7 @@ MsgObj.act = function(arg1, arg2) {
 	// create newActions (if needed), & fill it
 	initOwnArr(this, "newActions")
 		.push(action)
+	return this
 }
 
 var _MsgObjProcessActions = function(obj) {
@@ -826,6 +827,16 @@ var _SpriteImgLoadCallback = function(sprite){
 	if(sprite._loadNb==0){
 		sprite._loading = false
 	}
+}
+
+
+// TEXT ///////////////////////////////////////////////
+
+var Text = MSG.Text = Elem.new()
+
+Text.new = function(text, args){
+	Elem.new.call(this, args)
+	this.text = text
 }
 
 

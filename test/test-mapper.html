@@ -1,0 +1,182 @@
+<html>
+<head>
+	<title>Test mapper</title>
+	<script src="mysimplegame-core.js"></script>
+	<script src="mysimplegame-dynamic.js"></script>
+	<script src="mysimplegame-mapper.js"></script>
+	<script src="mysimplegame-map-collision.js"></script>
+	<script src="lib/nico/nico.js"></script>
+</head>
+<body>
+	<button id="play">play</button><br/>
+</body>
+<script>
+var Elem = MSG.Elem
+
+var mode="play"
+
+// play button
+document.body.querySelector("#play").onclick = function(){
+	play()
+}
+
+// create game
+var game = MSG.Game.new({width:600, height:400})
+game.act({keydown:"Space"}, function(){ this.switchPause() })
+var scene = MSG.Scene.new().addTo(game)
+
+var backCan = document.createElement('canvas')
+backCan.width = game.width
+backCan.height = game.height
+scene.sprite = backCan
+
+//canvas.focus()
+
+// get game canvas
+//var backCan = scene.backgroundCanvas // game.scenes[0].backgroundCanvas
+var backCtx = backCan.getContext("2d")
+// background
+backCtx.fillStyle = "white"
+backCtx.fillRect(0, 0, backCan.width, backCan.height)
+/*
+// draw rect
+backCtx.fillStyle = "black"
+backCtx.fillRect(100, 100, backCan.width-200, backCan.height-200)
+*/
+/*
+// draw circle
+backCtx.fillStyle = "black"
+backCtx.beginPath()
+var radius = canvas.width/2-50
+backCtx.arc(canvas.width/2, radius+100, radius, 0, 2*Math.PI)
+backCtx.fill()
+*/
+
+// draw form
+backCtx.fillStyle = "black"
+backCtx.beginPath()
+backCtx.moveTo(100, 300)
+backCtx.lineTo(300, 100)
+backCtx.lineTo(500, 300)
+backCtx.lineTo(100, 300)
+backCtx.fill()
+
+// manual draw
+/*
+var drawing=false
+var _prevX=null
+var _prevY=null
+canvas.onmousedown = function(evt){
+	if(mode=="draw") {
+		drawing=true
+		draw(evt.clientX-evt.target.offsetLeft, evt.clientY-evt.target.offsetTop)
+	}
+}
+document.body.onmouseup = function(){
+	drawing=false
+	_prevX=null
+	_prevY=null
+}
+canvas.onmousemove = function(evt) {
+	if(drawing) draw(evt.clientX-evt.target.offsetLeft, evt.clientY-evt.target.offsetTop)
+}
+var draw = function(x, y){
+	if(_prevX!==null && _prevY!==null) {
+		backCtx.fillStyle = "black"
+		backCtx.lineWidth=15
+		backCtx.lineCap='round'
+		backCtx.beginPath()
+		backCtx.moveTo(_prevX,_prevY)
+		backCtx.lineTo(x,y)
+		backCtx.stroke()
+	}
+	_prevX=x
+	_prevY=y
+//	backCtx.arc(x, y, 15, 0, 2*Math.PI)
+//	backCtx.fill()
+}
+*/
+var play = function(){
+	mode="play"
+
+	// build && draw walls
+	var walls = MSG.Mapper.map(backCan)
+	console.log("Nb walls:", walls.length)
+	MSG.Mapper.drawWalls(backCan, walls)
+
+	// walls mapCollider
+	var WallsMapCollider = MSG.MapCollider.new({
+		maps: [walls],
+		rebounce: false
+//		friction: true
+//		updASpd: true
+	})
+/*
+	// mover
+	var mover = Elem.new({shape:MSG.CIRCLE, x:20, y:20, width:40, height:40, sprite:true, sprite:{style:"red"}})
+				.add(Mover)
+				.add(WallsMapCollider)
+				.act({at:"collision"}, function(col){
+          console.log(this, "Collide with", col)
+        })
+        .addTo(scene)
+*/ 
+
+	// balls
+/*	var Ball = MSG.Elem.new({shape:MSG.CIRCLE, x:300, y:0, width:10, height:10, sprite:true, sprite:{style:"blue"}})
+//				.set({mapTgtColSpdX:50, mapColAcc:50})
+				.add(WallsMapCollider)
+				.add(MSG.Gravity)
+*/
+//	Ball.new({spdX:-20}).addTo(scene)
+/*	var nbBalls = 20, spd = 200
+	for(var b=0; b<nbBalls; ++b){
+		var spdA = Math.random()*Math.PI
+		var ball = Ball.new({spdX:spd*Math.cos(spdA), spdY:spd*Math.sin(spdA)})
+					.addTo(scene)
+	}
+*/
+/*
+	// bar
+	MSG.Elem.new({shape:MSG.BOX, x:300, y:20, width:300, height:20, speedT:-1, sprite:true, sprite:{style:"blue"}})
+				.add(WallsMapCollider)
+				.addTo(scene)
+*/
+/*
+	// anguler box
+	var AngBox = MSG.Elem.new({shape:MSG.BOX, size:20, sprite:"blue"})
+		.add(WallsMapCollider)
+		.add(MSG.Gravity)
+	var nbAngBox = 5
+	for(var b=0; b<nbAngBox; ++b){
+		var spd=200, spdA = Math.random()*Math.PI
+		AngBox.new({
+				x:300, y:50,
+				spdX:spd*Math.cos(spdA), spdY:spd*Math.sin(spdA),
+				aSpd:Math.random()*Math.PI-Math.PI/2
+			})
+			.addTo(scene)
+	}
+*/
+
+	// Nico
+	var createNico = function(){
+		MSG.Nico.new({x:300, y:50, spdX:50})
+				.add(MSG.MapCollider.new({
+					maps: [walls],
+					rebounce: false,
+					friction: true,
+					updASpd: false
+				}))
+				.act({at:"remove"}, createNico)
+				.addTo(scene)
+				//.act("collision", function(col){ console.log(col) })
+	}
+	createNico()
+
+	game.startNew("body")
+}
+if(mode==="play") play()
+
+</script>
+</html>
