@@ -1,0 +1,11 @@
+{
+	"key":"nico",
+	"title": "Nico",
+	"teams": ["hero"],
+	"width":20,
+	"height":30,
+	"src":"nico.js",
+	"cls":"Nico",
+	"img":"sprites/standing/1.png",
+	"collideWalls": true
+}

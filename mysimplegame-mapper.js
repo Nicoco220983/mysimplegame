@@ -2,9 +2,7 @@
 
 var maxErr = 50
 
-var Mapper = MSG.Mapper = MSG.Obj.new()
-
-var map = Mapper.map = function(canvas) {
+var map = MSG.map = function(canvas) {
 	// get canvas
 	if(typeof canvas==="string")
 		canvas = document.querySelector(canvas)
@@ -52,8 +50,8 @@ console.time("reorder")
 console.timeEnd("reorder")
 	return walls
 }
-
-var drawWalls = Mapper.drawWalls = function(canvas, walls, args) {
+/*
+var drawWalls = MSG.drawWalls = function(canvas, walls, args) {
 	if(!args) args = { stroke:"red" }
 	var ctx = canvas.getContext("2d")
 	var prevX=null, prevY=null
@@ -82,7 +80,7 @@ var drawBlock = function(ctx, args){
 		ctx.fill()
 	}
 }
-
+*/
 // solids
 
 var createSolids = function(data) {
@@ -186,18 +184,24 @@ var _createWall1 = function(walls, border1, border2, dir1, dir2, a1, a2) {
 		_createWall2(walls, border2, border1, a2, false)
 }
 
-var Wall = MSG.Wall = MSG.Obj.new()
+var Wall = MSG.Wall
 
-Wall.both = false
+var _Wall = class {
+	constructor(end1, end2, ang, both){
+		this.end1 = end1
+		this.end2 = end2
+		this.ang = ang
+		this.both = both
+		this.inners = []
+	}
+}
+//var _WallProto = Wall.prototype
+
+//Wall.both = false
 
 var _createWall2 = function(walls, end1, end2, a, both) {
 	// create wall
-	var wall = Wall.new({
-		end1: end1, end2: end2,
-		inners: [],
-		a: a,
-		both: both
-	})
+	var wall = new _Wall(end1, end2, a, both)
 	// link
 	end1.walls.push(wall)
 	end2.walls.push(wall)
@@ -224,7 +228,7 @@ var exactMergeWalls = function(walls, mergeableBorders) {
 	// loop on border ends
 	for(var b=0, len=mergeableBorders.length; b<len; ++b) {
 		var border = mergeableBorders[b], walls = border.walls
-		if(walls[0].a===walls[1].a) {
+		if(walls[0].ang===walls[1].ang) {
 			mergeBorder(mergeableBorders, b)
 			b--; len--
 		}
@@ -287,7 +291,6 @@ var approxMergeWalls = function(walls, mergeableBorders) {
 		mergeableBorders.sort(mergeableBordersSorter)
 		var border = mergeableBorders[0]
 		if(border.mergeError > maxErr) break
-//console.log(mergeableBorders.length, border.walls.length)
 		mergeBorder(mergeableBorders, 0)
 		var wall = border.walls[0]
 		var end1 = wall.end1, end2 = wall.end2
@@ -297,7 +300,7 @@ var approxMergeWalls = function(walls, mergeableBorders) {
 			computeMergeError(end2)
 	}
 	doRemoveWalls(walls)
-	recomputeWallsAngle(walls)
+//	recomputeWallsAngle(walls)
 }
 
 var mergeableBordersSorter = function(b1, b2) {
@@ -334,19 +337,19 @@ var _computeMergeError = function(border, dx, dy, xy, dxy2) {
 	var err = abs(dy*x - dx*y + xy) / sqrt(dxy2)
 	return err
 }
-
-Wall.compAng = function(){
+/*
+_WallProto.compAng = function(){
 	var end1=this.end1, end2=this.end2
 	var a = atan2(end1.x-end2.x, end2.y-end1.y) + PI_2
 	a = a % (this.both ? PI : PI_2)
-	this.a = a
+	this.ang = a
 }
 
 var recomputeWallsAngle = function(walls) {
 	for(var i=0, len=walls.length; i<len; ++i)
 		walls[i].compAng()
 }
-
+*/
 var reorderWalls = function(walls) {
 	// move walls
 	var remWalls = walls.slice()
@@ -357,22 +360,22 @@ var reorderWalls = function(walls) {
 		var found=false
 		if(!first){
 			for(var i=0, len=remWalls.length; i<len; ++i){
-				var rwall=remWalls[i]
+				var rwall=remWalls[i],
+					end1=rwall.end1, end2=rwall.end2,
+					nwall = new MSG.Wall(end1.x, end1.y, end2.x, end2.y, {both:rwall.both})
 				// try appending rwall to last wall
-				var rend1=rwall.end1
-				if(rend1.x===x2 && rend1.y===y2){
+				if(end1.x===x2 && end1.y===y2){
 					remWalls.splice(i, 1)
-					var end2=rwall.end2, x2=end2.x, y2=end2.y
-					walls.push(rwall)
+					var x2=end2.x, y2=end2.y
+					walls.push(nwall)
 					found=true
 					break
 				}
 				// try appending rwall to first wall
-				var rend2=rwall.end2
-				if(rend2.x===x1 && rend2.y===y1){
+				if(end2.x===x1 && end2.y===y1){
 					remWalls.splice(i, 1)
-					var end1=rwall.end1, x1=end1.x, y1=end1.y
-					walls.splice(firstWallIdx, 0, rwall)
+					var x1=end1.x, y1=end1.y
+					walls.splice(firstWallIdx, 0, nwall)
 					found=true
 					break
 				}
@@ -383,8 +386,9 @@ var reorderWalls = function(walls) {
 			// else, add first rem wall as new block
 			var rwall=remWalls.shift(),
 				end1=rwall.end1, x1=end1.x, y1=end1.y,
-				end2=rwall.end2, x2=end2.x, y2=end2.y
-			walls.push(rwall)
+				end2=rwall.end2, x2=end2.x, y2=end2.y,
+				nwall = new MSG.Wall(x1, y1, x2, y2, {both:rwall.both})
+			walls.push(nwall)
 			var firstWallIdx=walls.length-1
 		}
 	}

@@ -1,0 +1,18 @@
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<title>Test MSG Core Text</title>
+	<script src="mysimplegame-core.js"></script>
+</head>
+<body></body>
+<script>
+
+var TestGame = MSG.Game.new()
+
+MSG.Text.new("Hello world !", { x:"center", y:"center" })
+		.addTo(TestGame)
+
+TestGame.startNew()
+
+</script>
+</html>

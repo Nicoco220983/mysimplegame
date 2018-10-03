@@ -1,0 +1,37 @@
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<title>Test MSG Map collision</title>
+	<script src="../../mysimplegame-core.new.js"></script>
+	<script src="../../mysimplegame-dynamic.new.js"></script>
+	<script src="../../mysimplegame-map-collision.new.js"></script>
+	<script src="nico.js"></script>
+</head>
+<body></body>
+<script>
+
+var game = new MSG.Game()
+var scene = new MSG.Scene(game)
+
+var walls = MSG.newWalls([
+  100, 200,
+  500, 200
+])
+
+var can = scene.sprite = document.createElement("canvas")
+can.width = game.width
+can.height = game.height
+var ctx = can.getContext("2d")
+ctx.fillStyle = "white"
+ctx.fillRect(0, 0, game.width, game.height)
+MSG.drawWalls(can, walls)
+
+new MSG.Nico(game)
+	.setPos(game.width/2, 50)
+	.add(new MSG.MapCollider(walls, {
+		rebounce: false,
+		friction: true
+	}))
+
+</script>
+</html>

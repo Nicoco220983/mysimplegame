@@ -1,0 +1,50 @@
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<title>Test MSG Core Sprite</title>
+	<script src="../mysimplegame-core.new.js"></script>
+</head>
+<body></body>
+<script>
+
+var game = new MSG.Game()
+
+// shape
+
+new MSG.Elem(game).setPos(100, 100)
+
+new MSG.Elem(game).setPos(150, 100)
+	.set({ sprite: 'red', shape: 'circle' })
+
+var sprite = new MSG.Sprite()
+	.add({ fillStyle: 'red', shape: 'circle' })
+	.add({ fillStyle: 'blue', shape: 'box' })
+new MSG.Elem(game).setPos(200, 100)
+	.set({ sprite: sprite })
+
+new MSG.Elem(game).setPos(250, 100)
+	.set({ sprite: sprite, spriteSpd: 2 })
+
+new MSG.Elem(game).setPos(300, 100)
+	.set({ ang: Math.PI/4 })
+
+// text
+
+var spriteText = new MSG.Sprite()
+	.add({ text: 'Hello' })
+new MSG.Elem(game).setPos(100, 150)
+	.set({ sprite: spriteText })
+
+new MSG.Text(game, "World").setPos(200, 150)
+
+// src
+
+var spriteImg = new MSG.Sprite()
+	.add({ src: 'smiley.jpeg' })
+var el = new MSG.Elem(game).setPos(100, 200)
+	.set({ sprite: spriteImg })
+el.preload(spriteImg)
+game.preload(el)
+
+</script>
+</html>

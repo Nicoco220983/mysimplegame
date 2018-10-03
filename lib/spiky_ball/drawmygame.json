@@ -1,0 +1,20 @@
+[{
+	"key": "sball",
+	"title": "Spiky Ball",
+	"teams": ["enemy"],
+	"width":25,
+	"height":25,
+	"src":"spiky_ball.js",
+	"cls":"SpikyBall",
+	"img":"sprite.png"
+},{
+	"key": "sballb",
+	"title": "Spiky Ball (bouncing)",
+	"teams": ["enemy"],
+	"width":25,
+	"height":25,
+	"src":"spiky_ball.js",
+	"cls":"BouncingSpikyBall",
+	"img":"sprite.png",
+	"collideWalls": true
+}]

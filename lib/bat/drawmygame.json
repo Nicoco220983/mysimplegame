@@ -1,0 +1,19 @@
+[{
+	"key": "bat",
+	"title": "Bat",
+	"teams": ["enemy"],
+	"width":30,
+	"height":20,
+	"src":"bat.js",
+	"cls":"Bat",
+	"img":"sprites/1.png"
+},{
+	"key": "batv",
+	"title": "Bat (vertical)",
+	"teams": ["enemy"],
+	"width":30,
+	"height":20,
+	"src":"bat.js",
+	"cls":"BatV",
+	"img":"sprites/1.png"
+}]

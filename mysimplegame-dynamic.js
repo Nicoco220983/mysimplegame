@@ -70,8 +70,23 @@ var accTo = MSG.accTo = function(spd, tgtSpd, acc, accFun){
 // Inertia /////////////////////////////////////
 var Designer = MSG.Designer
 
-var Inertia = MSG.Inertia = Designer.new()
+var Inertia = MSG.Inertia = new Designer()
+Inertia.design = function(el){
+	if(el.hasInertia===true) return
+	el.hasInertia=true
 
+	if(el.spdX===undefined) el.spdX = 0
+	if(el.spdY===undefined) el.spdY = 0
+	if(el.angSpd===undefined) el.angSpd = 0
+
+	el.accXTo = accXTo
+	el.accYTo = accYTo
+	el.accAngTo = accAngTo
+
+	el.processSpeeds = processSpeeds
+	el.act(processSpeedsAct)
+}
+/*
 Inertia.design = function(el){
 	if(el.hasInertia===true) return
 	el.hasInertia=true
@@ -90,7 +105,7 @@ Inertia.design = function(el){
 	el.processSpeeds = processSpeeds
 	el.act(processSpeedsAct)
 }
-
+*/
 var accXTo = function(tgtSpd, acc, accFun) {
 	this.spdX += accTo(this.spdX, tgtSpd, acc, accFun)
 }
@@ -98,27 +113,27 @@ var accYTo = function(tgtSpd, acc, accFun) {
 	this.spdY += accTo(this.spdY, tgtSpd, acc, accFun)
 }
 var accAngTo = function(tgtSpd, acc, accFun) {
-	this.aSpd += accTo(this.aSpd, tgtSpd, acc, accFun)
+	this.angSpd += accTo(this.angSpd, tgtSpd, acc, accFun)
 }
 /*
-var moveTo = function(target, speed, args) {
-	var acc = getArg(args, "acc", speed)
-	var dec = getArg(args, "dec", acc*2)
-	var targetDistance = getArg(args, "distance", 0.0001)
-	var diffX = target.x - this.x
-	var diffY = target.y - this.y
-	var currentDistance = sqrt(diffX*diffX + diffY*diffY)
-	if(currentDistance > targetDistance) {
-		if(currentDistance<=dec) {
-			this.updSpdX(diffX, acc, dec)
-			this.updSpdY(diffY, acc, dec)
+var moveTo = function(target, speed, accFun, args) {
+//	var acc = getArg(args, "acc", speed)
+//	var dec = getArg(args, "dec", acc*2)
+	var tgtDst = getArg(args, "distance", 0.0001)
+	var dX = target.x - this.x
+	var dY = target.y - this.y
+	var curDst = sqrt(dX*dX + dY*dY)
+	if(curDst > tgtDst) {
+		if(curDst<=dec) {
+			this.updSpdX(dX, acc, dec)
+			this.updSpdY(dY, acc, dec)
 		} else {
-			var distanceToStop = speed*speed/dec/2
-			var distanceFactor = bound((currentDistance-targetDistance)/distanceToStop, 0, 1)
-			var a = atan2(diffY, diffX)
+			var distToStop = speed*speed/dec/2
+			var distFactor = bound((curDst-tgtDst)/distToStop, 0, 1)
+			var a = atan2(dY, dX)
 			var cosA = cos(a), sinA = sin(a)
-			this.updSpdX(speed*distanceFactor*cosA, acc*abs(cosA), dec)
-			this.updSpdY(speed*distanceFactor*sinA, acc*abs(sinA), dec)
+			this.updSpdX(speed*distFactor*cosA, acc*abs(cosA), dec)
+			this.updSpdY(speed*distFactor*sinA, acc*abs(sinA), dec)
 		}
 		return false
 	} else {
@@ -152,10 +167,10 @@ var rotateTo = function(target, speed, args) {
 */
 
 var processSpeeds = function() {
-	var fps = this.game.fps
+	var fps = MSG.fps
 	this.x += this.spdX/fps
 	this.y += this.spdY/fps
-	this.a = normAng(this.a + this.aSpd/fps)
+	this.ang = normAng(this.ang + this.angSpd/fps)
 }
 var processSpeedsAct = function() {
 	this.processSpeeds()
@@ -164,7 +179,14 @@ var processSpeedsAct = function() {
 
 // Gravity /////////////////////////////////////
 
-var Gravity = MSG.Gravity = Designer.new()
+var Gravity = MSG.Gravity = new Designer()
+Gravity.design = function(el){
+
+	el.add(Inertia)
+
+	el.gravity = this
+	el.act(GravityAct)
+}
 
 Gravity.x = 0
 Gravity.maxX = 1500
@@ -175,15 +197,8 @@ Gravity.acc = linAcc
 
 Gravity.removeDistance = 100
 
-Gravity.design = function(el) {
-
-	el.add(Inertia)
-
-	el.gravity = this
-	el.act(_GravityAct)
-}
-var _GravityAct = function() {
-	var fps = this.game.fps
+var GravityAct = function() {
+	var fps = MSG.fps
 	var grav=this.gravity,
 		gravX=grav.x, gravY=grav.y,
 		gravAcc=grav.acc
@@ -208,27 +223,33 @@ var _GravityAct = function() {
 
 // Mover /////////////////////////////////////
 
-var Mover = MSG.Mover = Designer.new()
-
-Mover.maxSpeed = 500
-Mover.acc = 500
-
+var Mover = MSG.Mover = new Designer()
 Mover.design = function(el){
 
 	el.add(Inertia)
 
 	el.mover = this
-	el.act(_MoverAct)
+	el.act(MoverAct)
 }
-_MoverAct = function(){
+
+Mover.maxSpeed = 500
+Mover.acc = 500
+Mover.accFun = defAcc
+
+var MoverAct = function(){
 	var keysdown = this.game.keysdown
-	var mover=this.mover, maxSpeed=mover.maxSpeed, acc=mover.acc
-	if(keysdown["ArrowLeft"]) this.accXTo(-maxSpeed, acc)
-	else if(keysdown["ArrowRight"]) this.accXTo(maxSpeed, acc)
-	else this.accXTo(0, acc)
-	if(keysdown["ArrowUp"]) this.accYTo(-maxSpeed, acc)
-	else if(keysdown["ArrowDown"]) this.accYTo(maxSpeed, acc)
-	else this.accYTo(0, acc)
+	var mover=this.mover,
+		maxSpeed=mover.maxSpeed, acc=mover.acc, accFun=mover.accFun
+	// acc X
+	if(game.isKeyDown("ArrowLeft")) var tgtSpdX = -maxSpeed
+	else if(game.isKeyDown("ArrowRight")) var tgtSpdX = maxSpeed
+	else var tgtSpdX = 0
+	this.accXTo(tgtSpdX, acc, accFun)
+	// acc Y
+	if(game.isKeyDown("ArrowUp")) var tgtSpdY = -maxSpeed
+	else if(game.isKeyDown("ArrowDown")) var tgtSpdY = maxSpeed
+	else var tgtSpdY = 0
+	this.accYTo(tgtSpdY, acc, accFun)
 }
 
 // imports

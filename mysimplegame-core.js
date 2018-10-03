@@ -8,7 +8,7 @@ MSG.fps = 30
 
 // OBJ /////////////////////////////////////////////
 
-var MsgObj = MSG.Obj = MSG.Object = {}
+//var MsgObj = MSG.Obj = MSG.Object = {}
 
 // new
 var ObjCreate = Object.create,
@@ -19,7 +19,7 @@ var inherits = function(obj1, obj2){
 }
 
 // inits
-
+/*
 var initOwnArr = function(obj, prop){
 	var arr = obj[prop]
 	if(!arr) arr = obj[prop] = []
@@ -40,161 +40,117 @@ var initOwnArrMsgObj = function(obj, prop){
 	}
 	return arr
 }
-
-var initArr = function(obj, prop){
+*/
+var initArr = MSG.initArr = function(obj, prop){
 	var arr = obj[prop]
 	if(!arr) arr = obj[prop] = []
 	return arr
 }
 
-var initObj = function(obj, prop){
+var initObj = MSG.initObj = function(obj, prop){
 	var _obj = obj[prop]
 	if(!_obj) _obj = obj[prop] = {}
 	return _obj
 }
 
-// new
-var MsgObjNew = MsgObj.new = function(args){
-	var newObj = ObjCreate(this)
-	ObjAssign(newObj, args)
-	return newObj
+var MsgObj = MSG.Obj = MSG.Object = class {
+  constructor(args){
+    if(args) this.set(args)
+  }
 }
+var MsgObjPt = MsgObj.prototype
 
 // set
-MsgObj.set = function(arg1, arg2) {
-	var t = typeof arg1
-	if(t==="string") {
-		this[arg1] = arg2
-	} else if(t==="object") {
-		ObjAssign(this, arg1)
+
+MsgObjPt.set = function(args){
+	ObjAssign(this, args)
+	return this
+}
+
+// x, y, ang, width, height
+
+MsgObjPt.x = 0
+MsgObjPt.y = 0
+MsgObjPt.ang = 0
+MsgObjPt.width = 30
+MsgObjPt.height = 30
+
+MsgObjPt.setPos = function(x, y){
+	this.x = x
+	this.y = y
+	return this
+}
+
+// sprite
+
+Object.defineProperty(MsgObjPt, 'spriteSize', {
+	set(size){
+		this.spriteWidth = size
+		this.spriteHeight = size
 	}
-	return this
-}
+})
+MsgObjPt.spriteSize = 'fill'
 
-// add
+MsgObjPt.spriteWidthStretch = 1
+MsgObjPt.spriteHeightStretch = 1
 
-MsgObj.addTo = function(obj) {
-	obj.add(this)
-	return this
-}
+MsgObjPt.spriteSpd = 1
+MsgObjPt.spriteStartTime = 0
 
-// load
-
-MsgObj.load = function(){
-	// loading
-	if(this._loading) return false
-	// load deps
-	var loadDeps=this._loadDeps
-	if(loadDeps!==undefined){
-		for(var i=0, len=loadDeps.length; i<len; ++i){
-			var depObj = loadDeps[i]
-			if(depObj.load()){
-				loadDeps.splice(i, 1)
-				i--; len--
-			}
-			else return false
-		}
-		if(loadDeps.length===0)
-			delete this._loadDeps
-	}
-	return true
-}
-
-MsgObj.wait = function(obj){
-	if(!obj._loading && !obj._loadDeps) return
-	initOwnArr(this, "_loadDeps")
-		.push(obj)
-}
-
-// start
-
-MsgObj.start = function(parent){
-	if(this.started) return
-	this.started = true
-	initOwnArr(this, "newActions")
-	this.onStart(parent)
-	this.trigger("start")
-	return this
-}
-
-MsgObj.onStart = function(){}
-
-// time
-
-MsgObj.time = 0
-
-var _MsgObjIncrTime = function(obj) {
-	obj.time += 1/MSG.fps
-}
-
-// size
-
-Object.defineProperty(MsgObj, "size", {
-	set(size) {
+Object.defineProperty(MsgObjPt, 'size', {
+	set(size){
 		this.width = size
 		this.height = size
 	}
 })
 
 // sprite
-
-var FIT = MSG.FIT = -1,
-	FILL = MSG.FILL = -2
-
-Object.defineProperty(MsgObj, "spriteSize", {
-	set(val){
-		this.spriteWidth = val
-		this.spriteHeight = val
+/*
+Object.defineProperty(MsgObjPt, 'sprite', {
+	get(){ return this._sprite },
+	set(sprite){
+		if(sprite === true) sprite = "black"
+		if(typeof sprite === "string"){
+			var color = sprite
+			sprite = new Sprite().set(
+				'fillStyle', color,
+				'width', 'parent',
+				'height', 'parent',
+				'shape', 'parent')
+		}
+		this._sprite = sprite
 	}
 })
-MsgObj.spriteSize = FILL
+*/
+//var FIT = MSG.FIT = -1,
+//	FILL = MSG.FILL = -2
 
-MsgObj.spriteWidthStretch = 1
-MsgObj.spriteHeightStretch = 1
-
-MsgObj.spriteSpd = 1
-MsgObj.spriteStartTime = 0
-
-var _MsgObjInitSprite = function(obj){
+var MsgObjDraw_spriteTrans = {}
+var MsgObjDraw = function(obj, ctx, x, y){
 	var sprite = obj.sprite
 	if(!sprite) return
-	if(inherits(sprite, Sprite)) return
-	if(sprite instanceof HTMLElement) return
-	var spriteType = typeof sprite
-	var spriteArgs = {
-		width: obj.width,
-		height: obj.height
+	if(typeof sprite === 'string'){
+		var color = sprite
+		var sprite = obj.sprite = SpriteGetRawFromCache(obj, color)
 	}
-	var shape = obj.shape
-	if(shape!==undefined) spriteArgs.shape = shape
-	if(spriteType==="string")
-		spriteArgs.style = sprite
-	else if(spriteType==="object")
-		ObjAssign(spriteArgs, sprite)
-	obj.sprite = Sprite.new(spriteArgs)
-}
-
-var _MsgObjDraw_spriteTrans = {}
-var _MsgObjDraw = function(obj, ctx, x, y){
-	var sprite = obj.sprite
-	if(!sprite) return
-	if(inherits(sprite, Sprite)){
-		sprite.start()
-		var t = _MsgObjDraw_spriteTrans
-		t.a = obj.a
-		_MsgObjComputeSpriteSize(obj, sprite, t)
-		var numImg = floor((obj.time - obj.spriteStartTime) * obj.spriteSpd)
-		var img = sprite.getImage(numImg, t)
-		if(img)
-			ctx.drawImage(img,
-				round(x+img.x),
-				round(y+img.y))
+	if(sprite instanceof Sprite) {
+		if(sprite.load()){
+			var t = MsgObjDraw_spriteTrans
+			t.ang = obj.ang
+			MsgObjComputeSpriteSize(obj, sprite, t)
+			var numImg = floor((obj.time - obj.spriteStartTime) * obj.spriteSpd)
+			var img = sprite.getImg(numImg, t)
+			if(img)
+				ctx.drawImage(img,
+					round(x+img.x),
+					round(y+img.y))
+		}
 	} else {
 		ctx.drawImage(sprite, round(x), round(y))
 	}
 }
 
-var _MsgObjComputeSpriteSize = function(obj, sprite, trans){
+var MsgObjComputeSpriteSize = function(obj, sprite, trans){
 	var sw=obj.spriteWidth, sh=obj.spriteHeight
 	// null
 	if(!sw) trans.width = 1
@@ -203,17 +159,17 @@ var _MsgObjComputeSpriteSize = function(obj, sprite, trans){
 	if(sw>0) trans.width = sw / sprite.width
 	if(sh>0) trans.height = sh / sprite.height
 	// FIT & FILL
-	if(sw===FIT || sh===FIT || sw===FILL || sh===FILL){
+	if(sw==='fit' || sh==='fit' || sw==='fill' || sh==='fill'){
 		var er = obj.width / obj.height,
 			sr = sprite.width / sprite.height,
 			eb = (er > sr)
-		if((eb && sw===FIT) || (!eb && sw===FILL))
+		if((eb && sw==='fit') || (!eb && sw==='fill'))
 			trans.width = obj.height / sprite.height
-		if((eb && sh===FIT) || (!eb && sh===FILL))
+		if((eb && sh==='fit') || (!eb && sh==='fill'))
 			trans.height = obj.height / sprite.height
-		if((eb && sw===FILL) || (!eb && sw===FIT))
+		if((eb && sw==='fill') || (!eb && sw==='fit'))
 			trans.width = obj.width / sprite.width
-		if((eb && sh===FILL) || (!eb && sh===FIT))
+		if((eb && sh==='fill') || (!eb && sh==='fit'))
 			trans.height = obj.width / sprite.width
 	}
 	// stretch
@@ -221,89 +177,156 @@ var _MsgObjComputeSpriteSize = function(obj, sprite, trans){
 	trans.height *= obj.spriteHeightStretch
 }
 
-// actions
 
-var Action = {}
 
-MsgObj.act = function(arg1, arg2) {
-	// parse args
-	if(arg2===undefined) var run=arg1
-	else var on=arg1, run=arg2
-	// create action
-	var action = ObjCreate(Action)
-	action.on = on
-	action.run = run
-	// create newActions (if needed), & fill it
-	initOwnArr(this, "newActions")
-		.push(action)
+// time
+
+MsgObjPt.time = 0
+
+var MsgObjIncrTime = function(obj) {
+	obj.time += 1/MSG.fps
+}
+
+
+
+// add
+
+var MsgObjAdd = MsgObjPt.add = function(obj){
+  if(obj instanceof Action){
+    initArr(this, "newActions")
+      .push(obj)
+  }
+  return this
+}
+
+MsgObjPt.addTo = function(obj){
+	obj.add(this)
 	return this
 }
 
-var _MsgObjProcessActions = function(obj) {
-	_MsgObjStartNewActions(obj)
-	_MsgObjRunActions(obj)
-	_MsgObjRunTimeActions(obj)
+
+// load
+
+var TO_LOAD = 0,
+	LOADING = 1,
+	LOADED = 2
+
+MsgObjPt._loadState = LOADED
+
+// function to be used by classes
+MsgObjPt.preload = function(){
+	var self = this
+	if(typeof self === "function") self = self.prototype
+	self._loadState = TO_LOAD
+	if(self._loadDeps === undefined) self._loadDeps = []
+	self._loadDeps = self._loadDeps // make own property
+	for(var i=0, len=arguments.length; i<len; ++i){
+		var dep = arguments[i]
+		self._loadDeps.push(dep)
+	}
+}
+MsgObj.preload = MsgObjPt.preload
+
+MsgObjPt.load = function(){
+	// loading
+	if(this._loadState === LOADED) return true
+	this._loadState = LOADING
+	// load deps
+	var loadDeps=this._loadDeps, allLoaded=true
+	if(loadDeps!==undefined){
+		for(var i=0, len=loadDeps.length; i<len; ++i){
+			if(!loadDeps[i].load())
+				allLoaded = false
+		}
+	}
+	if(allLoaded) this._loadState = LOADED
+	return allLoaded
 }
 
-var _MsgObjStartNewActions = function(obj) {
+// actions
+
+var Action = MSG.Action = class {
+  constructor(arg1, arg2){
+  	if(arg2===undefined) var run=arg1
+  	else var on=arg1, run=arg2
+  	this.on = on
+  	this.run = run
+  }
+}
+var ActionProt = Action.prototype
+
+MsgObjPt.act = function(arg1, arg2) {
+	// create newActions (if needed), & fill it
+	initArr(this, "newActions")
+		.push(new Action(arg1, arg2))
+	return this
+}
+
+var MsgObjProcessActions = function(obj) {
+	MsgObjStartNewActions(obj)
+	MsgObjRunActions(obj)
+	MsgObjRunTimeActions(obj)
+}
+
+var MsgObjStartNewActions = function(obj) {
 	var newActions = obj.newActions
 	if(!newActions) return
 	for(var i=0, len=newActions.length; i<len; ++i)
-		_MsgObjActionStart(obj, ObjCreate(newActions[i]))
+		MsgObjActionStart(obj, ObjCreate(newActions[i]))
 	newActions.length = 0
 }
 
-var _MsgObjActionStart = function(obj, action){
+var MsgObjActionStart = function(obj, action){
 	var startNow=true
 	// on
-	startNow &= _MsgObjActionInitOn(obj, action, action.on)
+	startNow &= MsgObjActionInitOn(obj, action, action.on)
 	// start
 	if(startNow)
-		_MsgObjActionStartNormal(obj, action)
+		MsgObjActionStartNormal(obj, action)
 }
 
 // on
-var _MsgObjActionInitOn = function(obj, action, on){
+var MsgObjActionInitOn = function(obj, action, on){
 	var startNow=true
 	var onType = _typeof(on)
 	if(onType==="array"){
 		for(var i=0, len=on.length; i<len; ++i)
-			startNow &= _MsgObjActionInitOn(obj, action, on[i])
+			startNow &= MsgObjActionInitOn(obj, action, on[i])
 	} else if(onType==="number"){
-		_MsgObjActionStartTime(obj, action, on)
+		MsgObjActionStartTime(obj, action, on)
 		startNow=false
 	} else if(onType==="string"){
-		_MsgObjActionStartEvent(obj, action, on)
+		MsgObjActionStartEvent(obj, action, on)
 		startNow=false
 	} else if(onType==="object"){
 		// deps
 		for(var dep in on){
-			var depInit=_MsgObjActionDepInits[dep]
+			var depInit=MsgObjActionDepInits[dep]
 			if(depInit!==undefined)
 				startNow &= (depInit(obj, on[dep], action) !== false)
 		}
 		// on
 		var on2 = on.on
-		if(on2) startNow &= _MsgObjActionInitOn(obj, action, on2)
+		if(on2) startNow &= MsgObjActionInitOn(obj, action, on2)
 	}
 	return startNow
 }
 
 // normal
 
-var _MsgObjActionStartNormal = function(obj, action) {
+var MsgObjActionStartNormal = function(obj, action) {
 	if(action.removed || action.started) return
 	action.started = true
 	initArr(obj, "actions")
 		.push(action)
 }
 
-Action.stop = function() {
+ActionProt.stop = function() {
 	this.started = false
 	return this
 }
 
-Action.remove = function() {
+ActionProt.remove = function() {
 	this.removed = true
 	this.started = false
 	return this
@@ -317,7 +340,7 @@ var _ActionCallTargetRun = function(args, action){
 	targetAction.run.call(this, args, targetAction)
 }
 
-var _MsgObjActionStartTime = function(obj, action, time) {
+var MsgObjActionStartTime = function(obj, action, time) {
 	// create time action
 	var timeAction = ObjCreate(action)
 	time += obj.time
@@ -337,7 +360,7 @@ var _MsgObjActionStartTime = function(obj, action, time) {
 
 // event
 
-var _MsgObjActionStartEvent = function(obj, action, evt) {
+var MsgObjActionStartEvent = function(obj, action, evt) {
 	// create event action
 	var evtAction = ObjCreate(action)
 	evtAction.target = action
@@ -350,11 +373,11 @@ var _MsgObjActionStartEvent = function(obj, action, evt) {
 
 // dep actions
 
-var _MsgObjActionDepInits = {}
+var MsgObjActionDepInits = {}
 
 var genMsgObjActionDepInit = function(depRun, depStart, targetStartNow){
 	return function(obj, on, action){
-		var depAction = ObjCreate(Action)
+		var depAction = new Action()
 		depAction.target = action
 		depAction.on = on
 		depAction.run = depRun
@@ -374,7 +397,7 @@ var genActionCondCallTargetRun = function(cond){
 
 // period
 
-_MsgObjActionDepInits.period = function(obj, on, action){
+MsgObjActionDepInits.period = function(obj, on, action){
 	action.period = on
 	action.periodTime = obj.time
 	if(action.baseRun===undefined){
@@ -408,7 +431,7 @@ var _ActionRunComplex = function(args, action) {
 
 // max
 
-_MsgObjActionDepInits.max = function(obj, on, action){
+MsgObjActionDepInits.max = function(obj, on, action){
 	action.max = on
 	action.nbRun = 0
 	if(action.baseRun===undefined){
@@ -419,60 +442,60 @@ _MsgObjActionDepInits.max = function(obj, on, action){
 
 // start
 
-var _MsgObjActionStartRun = function(args, action) {
+var MsgObjActionStartRun = function(args, action) {
 	var targetAction = action.target
 	if(targetAction.removed) return action.remove()
-	_MsgObjActionStartNormal(this, targetAction)
+	MsgObjActionStartNormal(this, targetAction)
 }
 
-_MsgObjActionDepInits.start = genMsgObjActionDepInit(_MsgObjActionStartRun, _MsgObjActionStart, false)
+MsgObjActionDepInits.start = genMsgObjActionDepInit(MsgObjActionStartRun, MsgObjActionStart, false)
 
 // stop
 
-var _MsgObjActionStopRun = function(args, action) {
+var MsgObjActionStopRun = function(args, action) {
 	var targetAction = action.target
 	if(targetAction.removed) return action.remove()
 	targetAction.started = false
 }
 
-_MsgObjActionDepInits.stop = genMsgObjActionDepInit(_MsgObjActionStopRun, _MsgObjActionStart)
+MsgObjActionDepInits.stop = genMsgObjActionDepInit(MsgObjActionStopRun, MsgObjActionStart)
 
 // rm
 
-var _MsgObjActionRmRun = function(args, action) {
+var MsgObjActionRmRun = function(args, action) {
 	action.target.remove()
 }
 
-_MsgObjActionDepInits.rm = genMsgObjActionDepInit(_MsgObjActionRmRun, _MsgObjActionStart)
+MsgObjActionDepInits.rm = genMsgObjActionDepInit(MsgObjActionRmRun, MsgObjActionStart)
 
 // key
 
-var _MsgObjActionKeyRun = genActionCondCallTargetRun(function(action){
+var MsgObjActionKeyRun = genActionCondCallTargetRun(function(action){
 	return this.game.isKeyDown(action.on)
 })
 
-_MsgObjActionDepInits.key = genMsgObjActionDepInit(_MsgObjActionKeyRun, _MsgObjActionStartNormal, false)
+MsgObjActionDepInits.key = genMsgObjActionDepInit(MsgObjActionKeyRun, MsgObjActionStartNormal, false)
 
 // keydown
 
-var _MsgObjActionKeydownRun = genActionCondCallTargetRun(function(action){
+var MsgObjActionKeydownRun = genActionCondCallTargetRun(function(action){
 	return this.game.isKeyDownNow(action.on)
 })
 
-_MsgObjActionDepInits.keydown = genMsgObjActionDepInit(_MsgObjActionKeydownRun, _MsgObjActionStartNormal, false)
+MsgObjActionDepInits.keydown = genMsgObjActionDepInit(MsgObjActionKeydownRun, MsgObjActionStartNormal, false)
 
 // keyup
 
-var _MsgObjActionKeyupRun = genActionCondCallTargetRun(function(action){
+var MsgObjActionKeyupRun = genActionCondCallTargetRun(function(action){
 	return this.game.isKeyUpNow(action.on)
 })
 
-_MsgObjActionDepInits.keyup = genMsgObjActionDepInit(_MsgObjActionKeyupRun, _MsgObjActionStartNormal, false)
+MsgObjActionDepInits.keyup = genMsgObjActionDepInit(MsgObjActionKeyupRun, MsgObjActionStartNormal, false)
 
 
 // run
 
-var _MsgObjRunActions = function(obj) {
+var MsgObjRunActions = function(obj) {
 	// actions
 	var actions = obj.actions
 	if(actions) {
@@ -486,7 +509,7 @@ var _MsgObjRunActions = function(obj) {
 		}
 	}
 }
-var _MsgObjRunTimeActions = function(obj) {
+var MsgObjRunTimeActions = function(obj) {
 	// time actions
 	var timeActions = obj.timeActions
 	if(timeActions) {
@@ -501,7 +524,7 @@ var _MsgObjRunTimeActions = function(obj) {
 	}
 }
 
-MsgObj.trigger = function(evt, args, args2) {
+MsgObjPt.trigger = function(evt, args, args2) {
 	var eventsActions = this.eventsActions
 	if(eventsActions===undefined) return
 	var eventActions = eventsActions[evt]
@@ -520,37 +543,54 @@ MsgObj.trigger = function(evt, args, args2) {
 }
 
 
+
 // ELEM /////////////////////////////////////////////
 
-var Elem = MSG.Elem = MSG.Element = MsgObj.new()
+var Elem = MSG.Elem = class extends MsgObj {
+	constructor(scene, args){
+		super(args)
+		this.addTo(scene)
+		this.game = this.scene.game
+	}
+}
+var ElemPt = Elem.prototype
+
+// sprite
+ElemPt.sprite = "black"
+
+// shape
+//var BOX = MSG.BOX = 0,
+//	CIRCLE = MSG.CIRCLE = 1
+
+ElemPt.shape = 'box'
+
+// layer
+ElemPt.layer = 0
 
 // add
-Elem.add = function(obj, args) {
-	if(inherits(obj, Sprite)) {
-		if(args!==undefined)
-			obj = obj.new(args)
-		if(!this.sprite)
+ElemPt.add = function(obj) {
+  MsgObjAdd.call(this, obj)
+	if(obj instanceof Sprite) {
+		if(this.sprite === undefined)
 			this.sprite = obj
-		this.wait(obj)
 	}
-	if(inherits(obj, Designer)) {
-		if(args!==undefined)
-			obj = obj.new(args)
+	if(obj instanceof Designer) {
 		obj.design(this)
 	}
 	return this
 }
 
 // start
-
+/*
 Elem.onStart = function(scene){
 	this.scene = scene
 	this.game = scene.game
-	_MsgObjInitSprite(this)
+	_ElemSetX(this, this.x)
+	_ElemSetY(this, this.y)
 }
-
+*/
 // remove
-Elem.remove = function() {
+ElemPt.remove = function() {
 	if(!this.removed)
 		this.trigger("remove")
 	this.removed = true
@@ -558,10 +598,46 @@ Elem.remove = function() {
 }
 
 // x, y, angle
+/*
+Object.defineProperty(Elem, "x", {
+	get(){ return this._x },
+	set(x){ _ElemSetX(this, x) }
+})
+var _ElemSetX = function(self, x){
+	var t = typeof x
+	if(t === "number"){}
+	else if(t === "string"){
+		if(self.scene){
+			if(x === "right") x = self.width / 2
+			else if(x === "center") x = self.scene.width / 2
+			else if(x === "left") x = self.scene.width - self.width / 2
+		}
+	}
+	self._x = x
+}
 Elem.x = 0
-Elem.y = 0
-Elem.a = 0
 
+Object.defineProperty(Elem, "y", {
+	get(){ return this._y },
+	set(y){ _ElemSetY(this, y) }
+})
+var _ElemSetY = function(self, y){
+	var t = typeof y
+	if(t === "number"){}
+	else if(t === "string"){
+		if(self.scene){
+			if(y === "right") y = self.height / 2
+			else if(y === "center") y = self.scene.height / 2
+			else if(y === "left") y = self.scene.height - self.height / 2
+		}
+	}
+	self._y = y
+}
+Elem.y = 0
+
+Elem.a = 0
+*/
+/*
 Elem.getPos = function(target) {
 	if(target===undefined) target="center"
 	if(target==="center") return { x:this.x, y:this.y }
@@ -593,93 +669,106 @@ Elem.setPos = function(pos, target) {
 	this.x = pos.y + cpos.y - this.y
 	return this
 }
-
+*/
 // size
-Elem.size = 30
-
-// shape
-var BOX = MSG.BOX = 0,
-	CIRCLE = MSG.CIRCLE = 1
-Elem.shape = BOX
-
-// layer
-Elem.layer = 0
+//Elem.size = 30
 
 // process
-Elem.process = function() {
+ElemPt.process = function() {
 	// actions
-	_MsgObjProcessActions(this)
+	MsgObjProcessActions(this)
 	// draw
-	_MsgObjDraw(this, this.scene.canvasContext,
+	MsgObjDraw(this, this.scene.canvasContext,
 		this.x - this.width/2,
 		this.y - this.height/2)
 	// time
-	_MsgObjIncrTime(this)
+	MsgObjIncrTime(this)
 }
 
 
 
 // DESIGNER /////////////////////////////////////////////
 
-var Designer = MSG.Designer = MsgObj.new()
-
-Designer.design = function() {}
+var Designer = MSG.Designer = class {
+	constructor(args){
+		ObjAssign(this, args)
+	}
+}
 
 
 // SPRITE /////////////////////////////////////////////
 
-var Sprite = MSG.Sprite = MsgObj.new()
-
-// size
-Sprite.size = 10
-
-// shape
-Sprite.shape = BOX
-
-// cache variables
-Sprite.cacheRotationStep = "auto"
-
-// start
-Sprite.onStart = function() {
-	_SpriteBuildCanvas(this)
-	_SpriteComputeCacheRotationStep(this)
-}
-
-var _SpriteBuildCanvas = function(self) {
-	if(self.imgs) return
-	var img = self.img
-	if(img!==undefined) {
-		img.x = img.y = 0
-		self.imgs = [img]
-		self.width = img.width
-		self.height = img.height
-	} else {
-		var can = document.createElement("canvas")
-		var width = can.width = self.width
-		var height = can.height = self.height
-		var ctx = can.getContext("2d")
-		ctx.fillStyle = self.style
-		var shape = self.shape
-		if(shape===BOX) {
-			ctx.rect(0, 0, width, height)
-		} else if(shape===CIRCLE) {
-			ctx.beginPath()
-			ctx.arc(width/2, height/2, width/2, 0, PI2)
-		}
-		ctx.fill()
-		can.x = can.y = 0
-		self.imgs = [can]
+var Sprite = MSG.Sprite = class extends MsgObj {
+	constructor(){
+		super()
+		this.imgs = []
+		for(var i=0, len=arguments.length; i<len; ++i)
+			this.add(arguments[i])
+		SpriteInitCacheRotationStep(this)
 	}
 }
+var SpritePt = Sprite.prototype
 
-var _SpriteComputeCacheRotationStep = function(self) {
+// size
+SpritePt.width = "img"
+SpritePt.height = "img"
+
+// default
+SpritePt.fillStyle = "black"
+SpritePt.font = "Arial"
+SpritePt.fontSize = 30
+
+// shape
+SpritePt.shape = 'box'
+
+// cache variables
+SpritePt.cacheRotationStep = 'auto'
+
+var SpriteInitCacheRotationStep = function(self) {
 	if(self.cacheRotationStep==="auto") {
-		var maxSize = _SpriteGetMaxSize(self)
+		var maxSize = SpriteGetMaxSize(self)
 		self.cacheRotationStep = 16 * max(1, maxSize/10)
 	}
 }
 
-var _SpriteGetMaxSize = function(self) {
+// raw sprite
+
+var SpriteGetRawFromCache = function(obj, color){
+	var key = SpriteGetRawKey(obj, color)
+	var sprite = SpriteRawCache[key]
+	if(!sprite){
+		sprite = SpriteRawCache[key] = SpriteBuildRaw(obj, color)
+	}
+	return sprite
+}
+
+var SpriteRawCache = {}
+
+var SpriteGetRawKey = function(obj, color){
+	return color +'_'+ obj.width +'_'+ obj.height +'_'+ obj.shape
+}
+
+var SpriteBuildRaw = function(obj, color){
+	return new Sprite()
+		.set({
+			width: obj.width,
+			height: obj.height
+		})
+		.add({
+			fillStyle: color,
+			shape: obj.shape
+		})
+}
+
+// size
+
+var SpriteInitSize = function(self) {
+	if(self.imgs.length===0) return
+	if(self.width === "img") self.width = self.imgs[0].width
+	if(self.height === "img") self.height = self.imgs[0].height
+}
+
+var SpriteGetMaxSize = function(self) {
 	var maxSize = 0, imgs = self.imgs
 	if(imgs)
 		for(var i=0, len=imgs.length; i<len; ++i) {
@@ -690,17 +779,39 @@ var _SpriteGetMaxSize = function(self) {
 	return maxSize
 }
 
+// add image
+
+SpritePt.add = function(img) {
+	if(img.src){
+		var cans = SpriteBuildSrcImg(this, img)
+		for(var can of cans)
+			this.imgs.push(can)
+	} else {
+		// add canvas image
+		var can = SpriteBuildImg(this, img)
+		this.imgs.push(can)
+		// init size
+		if(this.imgs.length===1)
+			SpriteInitSize(this)
+	}
+	return this
+}
+
 // get image
-Sprite.getImage = function(n, trans) {
-	var imgs=this.imgs
-	if(!imgs) return null
-	var nbImgs=imgs.length
+
+SpritePt.getImg = function(n, trans) {
+	var imgs=this.imgs,
+		nbImgs=imgs.length
 	if(nbImgs===0) return null
 	n = n % nbImgs
+	var img = imgs[n]
+//	if(img instanceof HTMLElement === false) {
+//		img = this.imgs[n] = SpriteBuildImg(this, img)
+//	}
 	if(!trans)
-		return imgs[n]
+		return img
 	else {
-		var key = this.getTransformKey(trans)
+		var key = SpriteGetTransformKey(this, trans)
 		// fetch cache
 		var transCache = this.transCache
 		if(transCache===undefined) transCache = this.transCache = {}
@@ -709,28 +820,28 @@ Sprite.getImage = function(n, trans) {
 		var tImg = tImgs[n]
 		if(tImg===undefined) {
 			// if tranformed image does not exist, create it
-			tImg = this.transformImage(imgs[n], trans)
+			tImg = SpriteTransformImage(img, trans)
 			tImgs[n] = tImg
 		}
 		return tImg
 	}
 }
 
-Sprite.getTransformKey = function(trans) {
+var SpriteGetTransformKey = function(self, trans) {
 	var key = ""
 	// width & height
-	key += "w"+round(trans.width*this.width)+"_"
-	key += "h"+round(trans.height*this.height)+"_"
+	key += "w"+round(trans.width*self.width)+"_"
+	key += "h"+round(trans.height*self.height)+"_"
 	// angle
-	var ta = trans.a
+	var ta = trans.ang
 	if(ta) {
-		var da = 1 / this.cacheRotationStep
+		var da = 1 / self.cacheRotationStep
 		key += "a"+mod(round(ta/da)*da, PI2)+"_"
 	}
 	return key
 }
 
-Sprite.transformImage = function(img, trans) {
+var SpriteTransformImage = function(img, trans) {
 	var width = img.width, height = img.height
 	var can = document.createElement("canvas")
 	// transform width & height
@@ -739,7 +850,7 @@ Sprite.transformImage = function(img, trans) {
 	height*=abs(tHeight)
 	// transform angle
 	var cWidth=width, cHeight=height
-	var ta = trans.a
+	var ta = trans.ang
 	if(ta) {
 		var cosA=abs(cos(ta)), sinA=abs(sin(ta))
 		var bufWidth=cWidth, bufHeight=cHeight
@@ -761,9 +872,184 @@ Sprite.transformImage = function(img, trans) {
 	return can
 }
 
+// build imgs
+
+var SpriteCtxKeys = [
+	"fillStyle",
+	"strokeStyle",
+	"lineCap",
+	"lineDashOffset",
+	"lineJoin",
+	"lineWidth",
+	"shadowBlur",
+	"shadowColor",
+	"shadowOffsetX",
+	"shadowOffsetY",
+	"globalAlpha"
+]
+
+var SpriteTextCtxKeys = SpriteCtxKeys.concat([
+  "font",
+  "fontSize"
+])
+
+var SpriteBuildImg = function(self, img) {
+	// create canvas
+	var can = document.createElement("canvas")
+	can.x = can.y = 0
+	if(img.text !== undefined) SpriteBuildTextImg(self, img, can)
+	else SpriteBuildShapeImg(self, img, can)
+	return can
+}
+
+var SpriteBuildShapeImg = function(self, img, can) {
+	// width & height
+	var width = img.width
+	if(width === undefined) width = self.width
+	if(width === "img") width = 30
+	var height = img.height
+	if(height === undefined) height = self.height
+	if(height === "img") height = 30
+	can.width = width
+	can.height = height
+	//shape
+	var shape = img.shape
+	if(!shape) shape = 'box'
+	// fill canvas
+	var ctx = can.getContext("2d")
+	SpriteFillContext(self, img, ctx)
+	if(shape==='box') {
+		ctx.rect(0, 0, width, height)
+	} else if(shape==='circle') {
+		ctx.beginPath()
+		ctx.arc(width/2, height/2, width/2, 0, PI2)
+	}
+	ctx.fill()
+}
+
+var SpriteBuildTextImg = function(self, img, can) {
+	var ctx = can.getContext("2d"),
+		text = img.text
+	// get font dimension
+	SpriteTextFillContext(self, img, ctx)
+	var width = ctx.measureText(text).width
+	can.width = width
+	can.height = img.fontSize || self.fontSize
+	// re-fill context (as canvas size update, reset the context)
+	SpriteTextFillContext(self, img, ctx)
+	// write text
+	ctx.fillText(text, 0, 0)
+}
+
+var SpriteFillContext = function(self, img, ctx){
+	for(var key of SpriteCtxKeys){
+		if(self[key]) ctx[key] = self[key]
+		if(img[key]) ctx[key] = img[key]
+	}
+}
+var SpriteTextFillContext = function(self, img, ctx){
+	ctx.textBaseline = 'top'
+	ctx.textAlign = 'left'
+	SpriteFillContext(self, img, ctx)
+  var font = img.font || self.font,
+    fontSize = img.fontSize || self.fontSize
+	ctx.font = fontSize +"px "+ font
+}
+
+
 // load
 
-Object.defineProperty(Sprite, "src", {
+SpritePt._loadState = LOADED
+
+var SpriteBuildSrcImg = function(self, img){
+	var srcs = SpriteEvalSrc(self, img)
+	// load images
+	var nbImgs = srcs.length
+	var imgs = new Array(nbImgs)
+	self._loadState = TO_LOAD
+	if(self._loadDeps === undefined)
+		self._loadDeps = []
+	var sprite = this
+	for(var i=0, len=nbImgs; i<len; ++i){
+		(function(i){
+			var img = new Image()
+			img._sprite = sprite
+			img._src = srcs[i]
+			img.load = SpriteImgLoad
+			img._loadState = TO_LOAD
+			self._loadDeps.push(img)
+			imgs[i] = img
+		})(i)
+	}
+	return imgs
+}
+
+var SpriteEvalSrc = function(self, img){
+	var src=img.src, srcs=src
+	if(!isArr(srcs)){
+		var nb = img.nb
+		if(nb){
+			var pad = img.pad
+			var begin = img.begin
+			if(begin===undefined) begin=1
+			var hash = img.hash || '#'
+			srcs = []
+			for(var i=begin, end=begin+nb; i<end; ++i) {
+				var num = i
+				if(pad)(pad+num).slice(-pad.length)
+				srcs.push(src.replace(hash,num))
+			}
+		} else {
+			srcs = [src]
+		}
+	}
+	return srcs
+}
+
+SpritePt.load = function(){
+	if(this._loadState === LOADED) return true
+	if(this._loadState <= TO_LOAD)
+		this._loadState = LOADING
+	var loadDeps = this._loadDeps
+	if(loadDeps){
+		for(var i=0, len=loadDeps.length; i<len; ++i){
+			var dep = loadDeps[i]
+			if(dep.load()){
+				loadDeps.splice(i, 1)
+				i--; len--
+			}
+		}
+		if(len === 0){
+			this._loadState = LOADED
+			SpriteInitSize(this)
+			return true
+		}
+	}
+	return false
+}
+
+var SpriteImgLoad = function(){
+	if(this._loadState === LOADED) return true
+	if(this._loadState === TO_LOAD) {
+		this._loadState = LOADING
+		this.onload = function() {
+			this._loadState = LOADED
+/*			if(i===0){ // TODO: change
+				sprite.width = this.width
+				sprite.height = this.height
+			} */
+		}
+		this.onerror = function() {
+			this._loadState = LOADED
+			console.warn('Could not load image:', this.src)
+		}
+		this.src = this._src
+	}
+	return false
+}
+
+/*
+Object.defineProperty(SpritePt, "src", {
 	get(){
 		return this._src
 	},
@@ -773,11 +1059,11 @@ Object.defineProperty(Sprite, "src", {
 	}
 })
 
-Sprite.load = function() {
+SpritePt.load = function() {
 	if(this._src && !this._loadStarted){
 		this._loadStarted = true
 		// build srcs
-		var src=this.src, srcs=src
+		var src=this._src, srcs=src
 		if(!isArr(srcs)){
 			var nb = this.nb
 			if(nb){
@@ -804,14 +1090,14 @@ Sprite.load = function() {
 			(function(i){
 				var img = new Image()
 				img.onload = function() {
-					_SpriteImgLoadCallback(sprite)
+					SpriteImgLoadCallback(sprite)
 					if(i===0){
 						sprite.width = this.width
 						sprite.height = this.height
 					}
 				}
 				img.onerror = function() {
-					_SpriteImgLoadCallback(sprite)
+					SpriteImgLoadCallback(sprite)
 					console.warn('Could not load image:', srcs[i])
 				}
 				img.src = srcs[i]
@@ -822,117 +1108,191 @@ Sprite.load = function() {
 	// call parent
 	return MsgObj.load.call(this)
 }
-var _SpriteImgLoadCallback = function(sprite){
+
+var SpriteImgLoadCallback = function(sprite){
 	sprite._loadNb -= 1
 	if(sprite._loadNb==0){
 		sprite._loading = false
 	}
 }
+*/
 
 
 // TEXT ///////////////////////////////////////////////
 
-var Text = MSG.Text = Elem.new()
-
-Text.new = function(text, args){
-	Elem.new.call(this, args)
-	this.text = text
+var Text = MSG.Text = class extends Elem {
+	constructor(scene, text, args){
+		super(scene, args)
+		if(text !== undefined) this.text = text
+		TextBuildSprite(this)
+		TextInitSize(this)
+	}
 }
+var TextPt = Text.prototype
+
+TextPt.size = "sprite"
+/*
+Object.defineProperty(TextPt, "text", {
+	get(){ return this._text },
+	set(text){
+		this.sprite = new Sprite()
+		this._text = text
+	}
+})
+*/
+//TextPt.text = "Text"
+/*
+TextPt.font = "Arial"
+TextPt.fontSize = 30
+
+TextPt.fillStyle = "black"
+*/
+/*
+Text.new = function(text, args){
+	var newObj = Elem.new.call(this, args)
+	if(text !== undefined) newObj.text = text
+	newObj.sprite = Sprite.new()
+	return newObj
+}
+
+Text.onStart = function(parent){
+	Elem.onStart.call(this, parent)
+	TextBuildSprite(this)
+	TextInitSize(this)
+}
+*/
+var TextBuildSprite = function(self){
+	var sprite = self.sprite = new Sprite()
+	var img = { text: self.text }
+	for(var key of SpriteTextCtxKeys)
+		if(self[key]) img[key] = self[key]
+	sprite.add(img)
+}
+
+var TextInitSize = function(self){
+	if(self.width === "sprite")
+		self.width = self.sprite.width
+	if(self.height === "sprite")
+		self.height = self.sprite.height
+}
+
 
 
 // SCENE /////////////////////////////////////////////
 
-var Scene = MSG.Scene = MsgObj.new()
+var Scene = MSG.Scene = class extends MsgObj {
+	constructor(game, args){
+		super(args)
+		this.game = game
+		this.elems = []
+		this.newElems = []
+		this.teamsElems = {}
+		SceneInitSize(this)
+		SceneCreateCanvas(this)
+		this.addTo(game)
+	}
+}
+var ScenePt = Scene.prototype
 
-Scene.x = 0
-Scene.y = 0
+//Scene.x = 0
+//Scene.y = 0
 
-Scene.size = "100%"
+ScenePt.shape = "box"
 
-Scene.sprite = "white"
+ScenePt.size = "100%"
+
+ScenePt.sprite = "white"
 
 // add
-Scene.add = function(obj, args) {
-	if(inherits(obj, Elem)) {
-		var newObj = obj.new(args)
-		initOwnArrMsgObj(this, "newElems")
-			.push(newObj)
-		this.wait(newObj)
+ScenePt.add = function(obj) {
+  MsgObjAdd.call(this, obj)
+	if(obj instanceof Elem) {
+		this.newElems.push(obj)
+		obj.scene = this
 	}
 	return this
 }
 
-// start
-Scene.onStart = function(game) {
-	this.game = game
-	initOwnArrMsgObj(this, "newElems")
-	_SceneInitSize(this)
-	_MsgObjInitSprite(this)
-	_SceneCreateCanvas(this)
-}
-
 // init size
-var _SceneInitSize = function(scn){
-	_SceneInitSize2(scn, "width")
-	_SceneInitSize2(scn, "height")
+var SceneInitSize = function(self){
+	_SceneInitSize(self, "width")
+	_SceneInitSize(self, "height")
 }
-var _SceneInitSize2 = function(scn, sizeProp){
-	var size=scn[sizeProp]
+var _SceneInitSize = function(self, sizeProp){
+	var size=self[sizeProp]
 	if(typeof size==="string"){
 		var len=size.length
 		if(size.substring(len-1)==="%"){
 			var sizePart=parseFloat(size.substring(0, len-1)/100.0)
-			var gameSize=scn.game[sizeProp]
-			scn[sizeProp] = round(gameSize*sizePart)
+			var gameSize=self.game[sizeProp]
+			self[sizeProp] = round(gameSize*sizePart)
 		}
 	}
 }
 
+// remove
+ScenePt.remove = function(){
+	this.removed = true
+	for(var el of this.elems)
+		el.remove()
+}
+
 // create canvas
-var _SceneCreateCanvas = function(scn) {
+var SceneCreateCanvas = function(self) {
 	// canvas
-	var can = scn.canvas = document.createElement("canvas")
-	can.width = scn.width
-	can.height = scn.height
-	scn.canvasContext = can.getContext("2d")
+	var can = self.canvas = document.createElement("canvas")
+	can.width = self.width
+	can.height = self.height
+	self.canvasContext = can.getContext("2d")
 }
 
 // process
-Scene.process = function() {
+ScenePt.process = function() {
 	if(!this.paused){
 		// clear canvas
-		_MsgObjDraw(this, this.canvasContext, 0, 0)
+		this.canvasContext.clearRect(0, 0, this.width, this.height)
+		MsgObjDraw(this, this.canvasContext, 0, 0)
 		// actions
-		_MsgObjProcessActions(this)
+		MsgObjProcessActions(this)
+		if(this.time===0) this.trigger("start")
 		// process elements
-		_SceneProcessElements(this)
+		SceneProcessElements(this)
 	}
 	// draw in game canvas
 	this.game.canvasContext.drawImage(this.canvas, floor(this.x), floor(this.y))
 	// time
-	if(!this.paused) _MsgObjIncrTime(this)
+	if(!this.paused) MsgObjIncrTime(this)
 }
 
-var _SceneProcessElements = function(scn) {
-	var elems = initArr(scn, "elems"),
-		newElems = scn.newElems
+var SceneProcessElements = function(self) {
+	var elems = self.elems,
+		teamsElems = self.teamsElems,
+		newElems = self.newElems
 
-	// remove elements
-	for(var i=elems.length-1; i>=0; --i) {
+	// remove elements from elems & teamsElems
+	for(var i=elems.length-1; i>=0; --i)
 		if(elems[i].removed)
 			elems.splice(i, 1)
+	for(var team in teamsElems){
+		var teamElems = teamsElems[team]
+		for(var i=teamElems.length-1; i>=0; --i)
+			if(teamElems[i].removed)
+				teamElems.splice(i, 1)
 	}
 
 	// add new elements
 	var nlen=newElems.length
 	if(nlen > 0) {
 		for(var i=0; i<nlen; ++i) {
-			var newElem = newElems[i]
-			elems.push(newElem)
-			newElem.start(scn)
+			var newEl = newElems[i]
+			elems.push(newEl)
+			// add in teamsElems also
+			var elTeams = newEl.teams
+			if(elTeams) for(var elTeam of elTeams)
+				initArr(teamsElems, elTeam).push(newEl)
 		}
 		newElems.length=0
-		elems.sort(_SceneElemSorter)
+		elems.sort(SceneElemSorter)
 	}
 
 	// process each elements
@@ -940,14 +1300,25 @@ var _SceneProcessElements = function(scn) {
 		elems[i].process()
 }
 
-var _SceneElemSorter = function(el1, el2) {
+var SceneElemSorter = function(el1, el2) {
 	return el1.layer - el2.layer
 }
 
-// pause
-Scene.paused = false
+// mouse
 
-Scene.pause = function(val){
+var SceneOnMouseEvent = function(self, type, x, y){
+	self.trigger(type, { x:x, y:y })
+	// TODO: propagate to elements
+}
+
+// pause
+
+ScenePt.pausable = true
+
+ScenePt.paused = false
+
+ScenePt.pause = function(val){
+	if(!this.pausable) return
 	if(val===undefined) val=true
 	this.paused=val
 }
@@ -955,116 +1326,219 @@ Scene.pause = function(val){
 var switchPause = function(){
 	this.pause(!this.paused)
 }
-Scene.switchPause = switchPause
+ScenePt.switchPause = switchPause
 
+
+
+// MENU /////////////////////////////////////////////
+
+// MenuScene
+
+var MenuScene = MSG.MenuScene = class extends Scene {
+	constructor(game, args){
+		super(game, args)
+		this.sprite = new Sprite()
+			.set({ width:this.width, height:this.height })
+			.add({ fillStyle:this.color, globalAlpha:this.alpha })
+		var titleDy = 0
+		if(this.text){
+			new Text(this, this.text, { x:this.width/2, y:this.height/2+30 })
+			titleDy = -30
+		}
+		new Text(this, this.title, { fontSize:50, x:this.width/2, y:this.height/2+titleDy })
+	}
+}
+var MenuScenePt = MenuScene.prototype
+
+MenuScenePt.title = "MENU"
+MenuScenePt.color = "grey"
+MenuScenePt.alpha = 0.3
+
+// LoadingScene
+
+var LoadingScene = MSG.LoadingScene = class extends MenuScene {
+	constructor(game){
+		super(game, { title:"LOADING", color:"grey", alpha:1 })
+	}
+}
+
+// PauseScene
+/*
+var PauseScene = MSG.PauseScene = class extends MenuScene {
+	constructor(game, args){
+		super(game, args)
+		this.add(PauseSceneAct)
+		game.pause()
+	}
+}
+var PauseScenePt = PauseScene.prototype
+
+PauseScenePt.pausable = false
+
+PauseScenePt.title = "Pause"
+PauseScenePt.text = "Click to continue"
+
+var PauseSceneAct = new Action("click", function(){
+	this.game.pause(false)
+	this.remove()
+})
+*/
 
 // GAME /////////////////////////////////////////////
 
-var Game = MSG.Game = MsgObj.new()
-
-Game.el = "body"
-
-Game.width = 600
-Game.height = 400
-
-Game.fps = 30
-
-Game.nbToLoad = 0
-
-var _GameInitScene = function(game){
-	var scenes = initOwnArrMsgObj(game, "scenes")
-	var scn = scenes[0]
-	if(!scn){
-		game.add(Scene)
-		scn = scenes[0]
+var Game = MSG.Game = class extends MsgObj {
+	constructor(el, args){
+		super(args)
+		if(el === undefined) el = "body"
+		this.game = this
+		this.scenes = []
+		GameInitEl(this, el)
+		// start asynchronously
+		setTimeout(() => GameStart(this))
 	}
+}
+var GamePt = Game.prototype
+
+GamePt.width = 600
+GamePt.height = 400
+
+//Game.fps = 30
+
+//GamePt.nbToLoad = 0
+
+var GameInitEl = function(self, el){
+	// determine el
+	if(!el) el="body"
+	if(typeof el==="string")
+		el = document.querySelector(el)
+	else if(!el) el = document.body
+	self.el = el
+	// case el is canvas
+	if(el instanceof HTMLCanvasElement){
+		self.width = el.width
+		self.height = el.height
+	}
+}
+
+var GameInitScene = function(self){
+	//var scenes = initOwnArrMsgObj(game, "scenes")
+	var scn = self.scenes[0]
+	if(!scn) scn = new Scene(self)
 	return scn
 }
 
 // add
-Game.add = function(obj, args) {
-	if(inherits(obj, Elem)) {
-		_GameInitScene(this)
-			.add(obj, args)
+GamePt.add = function(obj) {
+	MsgObjAdd(this, obj)
+	if(obj instanceof Elem){
+		GameInitScene(this)
+			.add(obj)
 	}
-	if(inherits(obj, Scene)) {
-		var newObj = obj.new(args)
-		initOwnArrMsgObj(this, "scenes")
-			.push(newObj)
+	if(obj instanceof Scene) {
+		this.scenes.push(obj)
 	}
 	return this
 }
 
 // start
-Game.startNew = function(el) {
-	if(this.started) return this
-	var newGame = this.new()
-	newGame.started = true
-	newGame.game = newGame
-	newGame.el = el
-	initOwnArrMsgObj(newGame, "scenes")
-	newGame.createCanvas()
-	newGame.loop()
-	return newGame
+var GameStart = function(self) {
+	GameCreateCanvas(self)
+	GameLoop(self)
 }
-
-Game.restart = function(){
+/*
+GamePt.restart = function(){
 	// reset time
 	this.time = 0
 	// reset scenes
-	delete this.scenes
-	initOwnArrMsgObj(this, "scenes")
+	this.scenes.length = 0
 	return this
 }
-
+*/
 // create canvas
-Game.createCanvas = function() {
-	// crate canvas
-	var can = this.canvas = document.createElement("canvas")
-	var backCan = this.backgroundCanvas = document.createElement("canvas")
-	var bufCan = this.bufferCanvas = document.createElement("canvas")
+var GameCreateCanvas = function(self) {
+	var el = self.el
+	var elIsCanvas = (el instanceof HTMLCanvasElement)
+	// create canvas
+	if(elIsCanvas) var can = self.canvas = el
+	else var can = self.canvas = document.createElement("canvas")
+	var backCan = self.backgroundCanvas = document.createElement("canvas")
+	var bufCan = self.bufferCanvas = document.createElement("canvas")
 	// size canvas
-	can.width = backCan.width = bufCan.width = this.width
-	can.height = backCan.height = bufCan.height = this.height
+	can.width = backCan.width = bufCan.width = self.width
+	can.height = backCan.height = bufCan.height = self.height
 	// get contexts
-	this.canvasContext = can.getContext("2d")
+	self.canvasContext = can.getContext("2d")
 	var backCtx = backCan.getContext("2d")
-	this.bufferCanvasContext = bufCan.getContext("2d")
+	self.bufferCanvasContext = bufCan.getContext("2d")
 	// style
 	can.style.border = "1px solid black"
 	can.setAttribute("tabindex", "1")
 	backCtx.fillStyle = "white"
 	backCtx.fillRect(0, 0, backCan.width, backCan.height)
 	// events
-	this.keydownTimes = {}
-	this.keyupTimes = {}
-	can.addEventListener("keydown", (evt) => _GameKeyDown(this, evt) )
-	can.addEventListener("keyup", (evt) => _GameKeyUp(this, evt) )
+	self.keydownTimes = {}
+	self.keyupTimes = {}
+	can.addEventListener("keydown", (evt) => GameKeyDown(self, evt) )
+	can.addEventListener("keyup", (evt) => GameKeyUp(self, evt) )
+	can.addEventListener("keypress", preventScreenMove)
+	GameAddMouseEventListener(self, "click")
+	GameAddMouseEventListener(self, "dblclick")
+	can.addEventListener("blur", () => self.trigger("blur") )
 	// append in html page
-	var el = this.el
-	if(!el) el="body"
-	if(typeof el==="string")
-		el = document.querySelector(el)
-	else if(!el) el = document.body
-	el.appendChild(can)
+	if(!elIsCanvas)
+		el.appendChild(can)
 }
-var _GameKeyDown = function(game, evt){
+
+// mouse
+
+var GameAddMouseEventListener = function(self, type){
+  var can = self.canvas
+  can.addEventListener(type, (evt) => {
+    var rect = can.getBoundingClientRect(),
+      x = evt.clientX - rect.left,
+      y = evt.clientY - rect.top
+    GameOnMouseEvent(self, type, x, y)
+  }) 
+}
+
+var GameOnMouseEvent = function(self, type, x, y){
+//	this.trigger(type, xy)
+	// scenes
+	var scenes = self.scenes
+	for(var i=0, len=scenes.length; i<len; ++i){
+		var scn = scenes[i]
+    if(!scn.paused && !scn.removed){
+			var scnX=scn.x, scnY=scn.y
+		  if(x>=scnX && y>=scnY && x<scnX+scn.width && y<scnY+scn.height)
+			  SceneOnMouseEvent(scn, type, x-scnX, y-scnY)
+    }
+	}
+}
+
+// key
+
+var ArrowsAndSpaceKeys = [32, 37, 38, 39, 40]
+
+var GameKeyDown = function(self, evt){
+	// fill game keydownTimes
 	var code = evt.code,
-		downTimes = game.keydownTimes,
+		downTimes = self.keydownTimes,
 		downTime = downTimes[code],
-		upTime = game.keyupTimes[code]
+		upTime = self.keyupTimes[code]
 	if(downTime!==undefined
 		&& (upTime===undefined
 			|| downTime>upTime))
 		return
-	downTimes[code] = game.time
+	downTimes[code] = self.time
+	// prevent srceen moving (space and arrow eys)
+	preventScreenMove(evt)
 }
-var _GameKeyUp = function(game, evt){
+var GameKeyUp = function(self, evt){
 	var code = evt.code
-	game.keyupTimes[code] = game.time
+	self.keyupTimes[code] = self.time
 }
 
-Game.isKeyDown = function(key){
+GamePt.isKeyDown = function(key){
 	var downTime = this.keydownTimes[key]
 	if(downTime===undefined) return false
 	var upTime = this.keyupTimes[key]
@@ -1074,48 +1548,82 @@ Game.isKeyDown = function(key){
 	return upTime===gameTime
 }
 
-Game.isKeyDownNow = function(key){
+GamePt.isKeyDownNow = function(key){
 	var downTime = this.keydownTimes[key]
 	if(downTime===undefined) return false
 	var gameTime = this.time
 	return downTime===gameTime
 }
 
-Game.isKeyUpNow = function(key){
+GamePt.isKeyUpNow = function(key){
 	var upTime = this.keyupTimes[key]
 	if(upTime===undefined) return false
 	var gameTime = this.time
 	return upTime===gameTime
 }
 
+var ArrowsAndSpaceKeys = [32, 37, 38, 39, 40]
+
+var preventScreenMove = function(evt){
+	if(ArrowsAndSpaceKeys.indexOf(evt.keyCode) > -1)
+		evt.preventDefault()
+}
+
 // game loop
-Game.loop = function() {
-	this.process()
-	setTimeout(() => this.loop(), 1000/MSG.fps)
+var GameLoop = function(self) {
+	if(self.load())
+		self.process()
+	setTimeout(() => GameLoop(self), 1000/MSG.fps)
 }
 
-Game.process = function() {
-	_MsgObjProcessActions(this)
-	_GameProcessScenes(this)
-	_MsgObjIncrTime(this)
+GamePt.process = function() {
+	MsgObjProcessActions(this)
+	if(this.time === 0) this.trigger("start")
+	GameProcessScenes(this)
+	MsgObjIncrTime(this)
 }
 
-var _GameProcessScenes = function(game){
-	var scenes = game.scenes
+var GameProcessScenes = function(self){
+	var scenes = self.scenes
+	var nbProcessed = 0
 	for(var i=0, len=scenes.length; i<len; ++i){
 		var scn = scenes[i]
+		if(scn.removed){
+			scenes.splice(i, 1)
+			i--; len--
+		}
 		if(scn.load()){
-			scn.start(game)
 			scn.process()
+			if(scn!==self.loadingScene) nbProcessed++
 		}
 	}
+	// loading scene
+	if(nbProcessed===0){
+		if(!self.loadingScene){
+			self.loadingScene = new self.LoadingScene(self)
+			if(self.loadingScene.load()) self.loadingScene.process()
+		}
+	} else if(self.loadingScene){
+		self.loadingScene.remove()
+		self.loadingScene = null
+	}
+}
+
+GamePt.LoadingScene = LoadingScene
+
+// clear
+
+GamePt.clear = function(){
+	for(var scn of this.scenes)
+		scn.remove()
+	this.scenes.length = 0
 }
 
 // pause
 
-Game.paused = false
+GamePt.paused = false
 
-Game.pause = function(val){
+GamePt.pause = function(val){
 	if(val===undefined) val=true
 	this.paused=val
 	// propag to all scenes
@@ -1124,8 +1632,21 @@ Game.pause = function(val){
 		scenes[i].pause(val)
 }
 
-Game.switchPause = switchPause
+GamePt.switchPause = switchPause
 
+//focus
+
+GamePt.hasFocus = function(){
+  return WindowFocused && this.canvas === document.activeElement
+}
+
+
+
+// window /////////////////////////////////
+
+var WindowFocused = false
+window.addEventListener("focus", function() { WindowFocused = true })
+window.addEventListener("blur", function() { WindowFocused = false })
 
 
 // VARIOUS /////////////////////////////////////////////

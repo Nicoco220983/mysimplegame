@@ -1,0 +1,21 @@
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<title>Test</title>
+	<script src="mysimplegame-core.new.js"></script>
+</head>
+<body></body>
+<script>
+
+var game = new MSG.Game()
+
+new MSG.Elem(game)
+	.setPos(100, 100)
+	.set({ shape: 'circle', sprite:'red' })
+	.act([1,2], function(){ this.trigger("toto", 50) })
+	.act("toto", function(args){ this.y += args })
+	.act({start:{keydown:"Space"}, period:1, max:5}, function(){ this.y += 10 })
+	.act({start:[3,5,7], stop:[4,6], rm:8}, function(){ this.y += 1 })
+
+</script>
+</html>

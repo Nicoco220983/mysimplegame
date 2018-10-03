@@ -1,0 +1,10 @@
+{
+	"key": "trophy",
+	"title": "Trophy",
+	"teams": ["item"],
+	"width":25,
+	"height":25,
+	"src":"trophy.js",
+	"cls":"Trophy",
+	"img":"sprite.png"
+}

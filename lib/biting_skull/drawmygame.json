@@ -1,0 +1,11 @@
+{
+	"key": "bskull",
+	"title": "Biting Skull",
+	"teams": ["enemy"],
+	"width":25,
+	"height":25,
+	"src":"biting_skull.js",
+	"cls":"BitingSkull",
+	"img":"sprites/1.png",
+	"collideWalls": true
+}

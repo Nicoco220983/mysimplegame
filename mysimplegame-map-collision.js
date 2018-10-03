@@ -1,18 +1,119 @@
 (function(){
 
+// WALL ///////////////////////////////////
+
+var Wall = MSG.Wall = class {
+	constructor(x1, y1, x2, y2, args){
+		this.x1 = x1
+		this.y1 = y1
+		this.x2 = x2
+		this.y2 = y2
+		this.ang = WallCompAng(this)
+		this.both = defArg(args, "both", false)
+	}
+}
+
+MSG.newWalls = function(xys, args) {
+	var res = []
+	var prevX=null, prevY=null
+	for(var i=0, len=xys.length; i<len; i+=2) {
+		var x=xys[i], y=xys[i+1]
+		if(prevX!==null){
+			res.push(new Wall(prevX, prevY, x, y, args))
+		}
+		prevX=x; prevY=y
+	}
+	return res
+}
+
+var WallCompAng = function(self){
+	var a = atan2(self.x1-self.x2, self.y2-self.y1) + PI_2
+	a = a % (self.both ? PI : PI_2)
+	return a
+}
+
+var drawWalls = MSG.drawWalls = function(canvas, walls, args) {
+	if(!args) args = { stroke:"red" }
+	var ctx = canvas.getContext("2d")
+	var prevX=null, prevY=null
+	for(var w=0, len=walls.length; w<len; ++w) {
+		var wall=walls[w],
+			x1=wall.x1, y1=wall.y1,
+			x2=wall.x2, y2=wall.y2
+		if(x1!==prevX || y1!==prevY){
+			if(prevX!==null) drawBlock(ctx, args)
+			ctx.beginPath()
+			ctx.moveTo(x1, y1)
+		}
+		ctx.lineTo(x2, y2)
+		prevX=x2; prevY=y2
+	}
+	drawBlock(ctx, args)
+}
+
+var drawBlock = function(ctx, args){
+	if(args.stroke){
+		ctx.lineWidth=1
+		ctx.strokeStyle=args.stroke
+		ctx.stroke()
+	}
+	if(args.fill){
+		ctx.fillStyle=args.fill
+		ctx.fill()
+	}
+}
+
+
+// MAP ////////////////////////////////////
+
+var Map = MSG.Map = class {
+  constructor(){
+    var walls = this.walls = []
+    for(var i=0, len=arguments.length; i<len; ++i){
+      var wall = arguments[i]
+      if(!(wall instanceof Wall))
+        
+      walls.push(wall)
+    }
+  }
+}
+var MapPt = Map.prototype
+
+MapPt.add = function(obj){
+  if(obj instanceof Wall)
+    this.walls.push(obj)
+}
+
+// COLLIDER ///////////////////////////////
+
 var minDistToWall = 0.001
 
-var MapCollider = MSG.MapCollider = MSG.Designer.new()
+var MapCollider = MSG.MapCollider = class extends MSG.Designer {
+	constructor(walls, args){
+		var lenArgs = arguments.length
+		var lastArg = arguments[lenArgs-1]
+		if(typeof lastArg === "object" && lastArg.length === undefined){
+			lenArgs--
+			super(lastArg)
+		} else {
+			super()
+		}
+		this.maps = []
+		for(var i=0; i<lenArgs; ++i)
+			this.maps.push(arguments[i])
+	}
+}
+var MapColliderProto = MapCollider.prototype
 
-MapCollider.rebounce = 0.75
-MapCollider.rebounceMinSpd = 100
+MapColliderProto.rebounce = 0.75
+MapColliderProto.rebounceMinSpd = 100
 
-MapCollider.friction = 20
-MapCollider.frictionFun = MSG.genGeoAcc()
+MapColliderProto.friction = 20
+MapColliderProto.frictionFun = MSG.genGeoAcc()
 
-MapCollider.updASpd = false
+MapColliderProto.updASpd = false
 
-MapCollider.design = function(el) {
+MapColliderProto.design = function(el) {
 	// add inertia
 	el.add(Inertia)
 
@@ -54,15 +155,15 @@ var _mcProcessSpeeds = function(el, remLinPart, remAngPart, it) {
 	if(it>=5) return
 
 	// check if collision check is necessary
-	var spdX=el.spdX, spdY=el.spdY, aSpd=el.aSpd,
+	var spdX=el.spdX, spdY=el.spdY, angSpd=el.angSpd,
 		shape=el.shape
 	var testLin=(remLinPart>0 && (spdX!==0 || spdY!==0))
-	var testAng=(remAngPart>0 && (aSpd!==0 && shape===BOX))
+	var testAng=(remAngPart>0 && (angSpd!==0 && shape==="box"))
 	if(!testLin && !testAng) return
 
 	// compute colWalls, using fastCheckNoBlock
-	var fps=el.game.fps,
-		dx=spdX/fps, dy=spdY/fps, da=aSpd/fps,
+	var fps=MSG.fps,
+		dx=spdX/fps, dy=spdY/fps, da=angSpd/fps,
 		remDx=remLinPart*dx, remDy=remLinPart*dy, remDa=remAngPart*da
 	var x=el.x, y=el.y, w2=el.width/2, h2=el.height/2, r2=max(w2,h2)*1.42
 	var minX = x - r2 + min(0, remDx)
@@ -78,7 +179,7 @@ var _mcProcessSpeeds = function(el, remLinPart, remAngPart, it) {
 		var mc = mcs[b]
 		_blockSpdUpdCtx.mc = mc
 		// loop walls
-		for(var m=0, maps=mcs[b].maps, mLen=maps.length; m<mLen; ++m){
+		for(var m=0, maps=mc.maps, mLen=maps.length; m<mLen; ++m){
 			for(var w=0, walls=maps[m], wLen=walls.length; w<wLen; ++w){
 				var wall = walls[w]
 				_blockSpdUpdCtx.wall = wall
@@ -88,8 +189,8 @@ var _mcProcessSpeeds = function(el, remLinPart, remAngPart, it) {
 					if(testLin) {
 						var linCollide=false, angCollide=false
 						switch(shape) {
-							case BOX: linCollide = getBoxLinCol(_blockSpdUpdCtx, remDx, remDy, _linCol); break
-							case CIRCLE: linCollide = getCircleLinCol(_blockSpdUpdCtx, remDx, remDy, _linCol); break
+							case "box": linCollide = getBoxLinCol(_blockSpdUpdCtx, remDx, remDy, _linCol); break
+							case "circle": linCollide = getCircleLinCol(_blockSpdUpdCtx, remDx, remDy, _linCol); break
 						}
 					}
 					// test angular collision
@@ -102,12 +203,14 @@ var _mcProcessSpeeds = function(el, remLinPart, remAngPart, it) {
 	}
 
 	// compute block parts
+	var linBlockDist=null
 	if(!testLin) var linBlockPart=0
 	else {
 		var linBlockDist=_linCol.distToBlock
 		if(linBlockDist===null) var linBlockPart=remLinPart
 		else var linBlockPart=linBlockDist/norm(dx, dy)
 	}
+	var angBlockDist=null
 	if(!testAng) var angBlockPart=0
 	else {
 		var angBlockDist=_angCol.distToBlock
@@ -124,7 +227,7 @@ var _mcProcessSpeeds = function(el, remLinPart, remAngPart, it) {
 		newRemLinPart -= linBlockPart
 		if(linBlockDist!==null) col=_linCol
 	} else {
-		el.a = normAng(el.a + angBlockPart*da)
+		el.ang = normAng(el.ang + angBlockPart*da)
 		newRemAngPart -= angBlockPart
 		if(angBlockDist!==null) col=_angCol
 	}
@@ -141,7 +244,7 @@ var _mcProcessSpeeds = function(el, remLinPart, remAngPart, it) {
 		// update speed
 		el.spdX = spdX + _blockSpdUpdRes.x
 		el.spdY = spdY + _blockSpdUpdRes.y
-		if(mc.updASpd) el.aSpd = aSpd + _blockSpdUpdRes.a
+		if(mc.updASpd) el.angSpd = angSpd + _blockSpdUpdRes.ang
 		// update _lastCol
 		colCopy(col, _lastCol)
 	}
@@ -150,11 +253,10 @@ var _mcProcessSpeeds = function(el, remLinPart, remAngPart, it) {
 }
 
 var fastCheckNoBlock = function(minX, maxX, minY, maxY, wall) {
-	var end1=wall.end1, end2=wall.end2
-	var x1=end1.x, x2=end2.x
+	var x1=wall.x1, x2=wall.x2
 	if(minX>x1 && minX>x2) return false
 	if(maxX<x1 && maxX<x2) return false
-	var y1=end1.y, y2=end2.y
+	var y1=wall.y1, y2=wall.y2
 	if(minY>y1 && minY>y2) return false
 	if(maxY<y1 && maxY<y2) return false
 	return true
@@ -167,7 +269,7 @@ var getBoxLinCol = function(ctx, esx, esy, linCol) {
 	if(checkDirection(esx, esy, wall)) return false
 	var ex=el.x, ey=el.y,
 		ew2=el.width/2, eh2=el.height/2,
-		ea=el.a, ecosa=cos(ea), esina=sin(ea),
+		ea=el.ang, ecosa=cos(ea), esina=sin(ea),
 		ewcosa=ew2*ecosa, ewsina=ew2*esina, ehcosa=eh2*ecosa, ehsina=eh2*esina,
 		ex1 = ex - ewcosa + ehsina,
 		ex2 = ex + ewcosa + ehsina,
@@ -177,8 +279,7 @@ var getBoxLinCol = function(ctx, esx, esy, linCol) {
 		ey2 = ey + ewsina - ehcosa,
 		ey3 = ey + ewsina + ehcosa,
 		ey4 = ey - ewsina + ehcosa,
-		end1=wall.end1, end2=wall.end2,
-		wx1=end1.x, wy1=end1.y, wx2=end2.x, wy2=end2.y
+		wx1=wall.x1, wy1=wall.y1, wx2=wall.x2, wy2=wall.y2
 	var collide = false
 	collide |= getPointColToSeg(ex1, ey1, esx, esy, wx1, wy1, wx2, wy2, false, linCol, ctx)
 	collide |= getPointColToSeg(ex2, ey2, esx, esy, wx1, wy1, wx2, wy2, false, linCol, ctx)
@@ -200,11 +301,10 @@ var getCircleLinCol = function(ctx, esx, esy, linCol) {
 	if(checkDirection(esx, esy, wall)) return false
 	var ex=el.x, ey=el.y,
 		ew2=el.width/2,
-		wa=wall.a,
+		wa=wall.ang,
 		ex1=ex-ew2*cos(wa),
 		ey1=ey-ew2*sin(wa),
-		end1=wall.end1, end2=wall.end2,
-		wx1=end1.x, wy1=end1.y, wx2=end2.x, wy2=end2.y
+		wx1=wall.x1, wy1=wall.y1, wx2=wall.x2, wy2=wall.y2
 	var collide = false
 	collide |= getPointColToSeg(ex1, ey1, esx, esy, wx1, wy1, wx2, wy2, false, linCol, ctx)
 	collide |= getPointColToCircle(wx1, wy1, -esx, -esy, ex, ey, ew2, linCol, ctx)
@@ -214,7 +314,7 @@ var getCircleLinCol = function(ctx, esx, esy, linCol) {
 
 var checkDirection = function(esx, esy, wall) {
 	if(!wall.both) {
-		var wa=wall.a, esa=atan2(esy, esx)
+		var wa=wall.ang, esa=atan2(esy, esx)
 		if((esa - wa + 7/2*PI)%PI_2 >= PI) return true
 	}
 	return false
@@ -272,11 +372,10 @@ var getPointColToCircle = function(Ax, Ay, Asx, Asy, Cx, Cy, Cw, linCol, ctx) {
 var _circleToSegCols = []
 var getBoxAngCol = function(ctx, remDa, angCol) {
 	var el=ctx.el, wall=ctx.wall
-	var end1=wall.end1, end2=wall.end2,
-		wx1=end1.x, wy1=end1.y, wx2=end2.x, wy2=end2.y
+	var wx1=wall.x1, wy1=wall.y1, wx2=wall.x2, wy2=wall.y2
 	var ex=el.x, ey=el.y,
 		ew2=el.width/2, eh2=el.height/2, er=norm(ew2, eh2),
-		ea=el.a, ecosa=cos(ea), esina=sin(ea),
+		ea=el.ang, ecosa=cos(ea), esina=sin(ea),
 		ewcosa=ew2*ecosa, ewsina=ew2*esina, ehcosa=eh2*ecosa, ehsina=eh2*esina,
 		ex1 = ex - ewcosa + ehsina,
 		ex2 = ex + ewcosa + ehsina,
@@ -443,9 +542,9 @@ var colCompAng = function(col) {
 		_colCompAngWalls.push(walls[i])
 	}
 	// get avg angle from these walls
-	var a = _colCompAngWalls[0].a
+	var a = _colCompAngWalls[0].ang
 	for(var i=1, len=_colCompAngWalls.length; i<len; ++i)
-		a = avgAng(a, _colCompAngWalls[i].a, 1/(i+1))
+		a = avgAng(a, _colCompAngWalls[i].ang, 1/(i+1))
 	col.ang = a
 	return a
 }
@@ -456,12 +555,12 @@ var _pointBlockSpdUpdRes = {}
 var computeBlockSpdUpd = function(mc, el, col, colA, res) {
 	// compute block react
 	if(!mc.updASpd) {
-		computePointBlockSpdUpd(mc, el, el.spdX, el.spdY, colA, el.game.fps, res)
+		computePointBlockSpdUpd(mc, el, el.spdX, el.spdY, colA, MSG.fps, res)
 	} else {
-		var spdUpdX=0, spdUpdY=0, aSpdUpd=0
+		var spdUpdX=0, spdUpdY=0, angSpdUpd=0
 		var elX=el.x, elY=el.y,
-			elSpdX=el.spdX, elSpdY=el.spdY, elSpdA=el.aSpd,
-			fps=el.game.fps
+			elSpdX=el.spdX, elSpdY=el.spdY, elSpdA=el.angSpd,
+			fps=MSG.fps
 		// for each collision point
 		for(var p=0, points=col.points, nbPoints=points.length/2; p<nbPoints; p+=2) {
 			// compute point speed (before collision)
@@ -487,11 +586,11 @@ var computeBlockSpdUpd = function(mc, el, col, colA, res) {
 			// add col speeds to total
 			spdUpdX+=rlSpdX/nbPoints
 			spdUpdY+=rlSpdY/nbPoints
-			aSpdUpd+=raSpdA/nbPoints
+			angSpdUpd+=raSpdA/nbPoints
 		}
 		res.x=spdUpdX
 		res.y=spdUpdY
-		res.a=aSpdUpd
+		res.ang=angSpdUpd
 	}
 }
 
@@ -587,12 +686,16 @@ var sign = MSG.sign,
 	normAng = MSG.normAng,
 	avgAng = MSG.avgAng
 
-var BOX = MSG.BOX,
-	CIRCLE = MSG.CIRCLE
-
 var accTo = MSG.accTo,
 	Inertia = MSG.Inertia
 
 var ObjectAssign = Object.assign
+var isArr = Array.isArray
+
+var defArg = function(args, key, defVal){
+	if(!args) return defVal
+	var val = args[key]
+	return (val===undefined) ? defVal : val
+}
 
 }())
